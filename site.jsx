@@ -25,7 +25,6 @@ const MENUS = {
     {label:'Clear All Outputs',       action:'clear-all'},
   ],
   Kernel: [
-    {label:'Interrupt',               action:'interrupt',       shortcut:'I, I'},
     {label:'Restart',                 action:'restart'},
     {label:'Restart & Run All',       action:'restart-run-all'},
     {label:'Restart & Clear Output',  action:'restart-clear'},
@@ -55,19 +54,23 @@ function Toast({message}) {
 
 // ── Cell run button ───────────────────────────────────────────────────────────
 function RunBtn({onRun, running}) {
+  const [hovered, setHovered] = React.useState(false);
   return (
     <button
       onClick={e => { e.stopPropagation(); onRun(); }}
       title="Run cell  (Shift+Enter)"
       className="run-btn"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         position:'absolute', top:7, right:8,
-        background:'var(--surf)', border:'1px solid var(--rule)',
-        color: running ? 'var(--fg-mute)' : 'var(--accent)',
+        background: !running && hovered ? 'var(--accent)' : 'var(--surf)',
+        border:'1px solid ' + (!running && hovered ? 'var(--accent)' : 'var(--rule)'),
+        color: running ? 'var(--fg-mute)' : hovered ? '#1a0a02' : 'var(--accent)',
         borderRadius:3, padding:'2px 8px', fontSize:11,
         cursor: running ? 'wait' : 'pointer',
         fontFamily:'JetBrains Mono,monospace', fontWeight:600,
-        transition:'opacity .15s, color .15s',
+        transition:'background .15s ease, border-color .15s ease, color .15s ease',
         zIndex:2,
       }}
     >{running ? '■' : '▶ Run'}</button>
@@ -138,6 +141,25 @@ function MdCell({children, id}) {
   return <CellShell id={id} kind="md">{children}</CellShell>;
 }
 
+// ── Resume button ─────────────────────────────────────────────────────────────
+function ResumeBtn() {
+  const [hovered, setHovered] = React.useState(false);
+  return (
+    <a href={S.links.resume} target="_blank" rel="noreferrer" className="mono"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        fontSize:12, padding:'5px 12px',
+        background: hovered ? '#ff8c3a' : 'var(--accent)',
+        color:'#1a0a02', fontWeight:600, borderRadius:4, textDecoration:'none',
+        display:'flex', alignItems:'center', gap:6,
+        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
+        boxShadow: hovered ? '0 4px 12px rgba(243,119,38,.25)' : 'none',
+        transition:'transform .15s ease, background .15s ease, box-shadow .15s ease',
+      }}>⬇ resume.pdf</a>
+  );
+}
+
 // ── Toolbar ───────────────────────────────────────────────────────────────────
 function Toolbar({onRunAll, onInterrupt, onRestart, onJump, sections, openMenu, setOpenMenu, onMenuAction}) {
   const menuRef = useRef(null);
@@ -168,10 +190,7 @@ function Toolbar({onRunAll, onInterrupt, onRestart, onJump, sections, openMenu, 
                className="tnav-link">{s.label}</a>
           ))}
         </div>
-        <a href={S.links.resume} target="_blank" rel="noreferrer" className="mono" style={{
-          fontSize:12,padding:'5px 12px',background:'var(--accent)',color:'#1a0a02',
-          fontWeight:600,borderRadius:4,textDecoration:'none',display:'flex',alignItems:'center',gap:6,
-        }}>⬇ resume.pdf</a>
+        <ResumeBtn />
       </div>
 
       {/* menu + action bar */}
@@ -294,8 +313,6 @@ function HeroCell() {
       <p style={{fontSize:'clamp(17px,1.6vw,19px)',lineHeight:1.55,marginTop:8,marginBottom:8,maxWidth:760,color:'var(--fg)',textWrap:'pretty'}}>{S.bio}</p>
       <div style={{display:'flex',flexWrap:'wrap',gap:8,marginTop:18}}>
         <PillLink href={S.links.paper} primary>📄 read the paper</PillLink>
-        <PillLink href={S.links.github}>github</PillLink>
-        <PillLink href={S.links.linkedin}>linkedin</PillLink>
         <PillLink href="#sec-demo">↓ try the demo</PillLink>
       </div>
     </MdCell>
@@ -303,14 +320,30 @@ function HeroCell() {
 }
 
 function PillLink({href, children, primary}) {
+  const [hovered, setHovered] = React.useState(false);
   return (
-    <a href={href} target={href.startsWith('#') ? undefined : '_blank'} rel="noreferrer" className="mono" style={{
-      fontSize:12,padding:'7px 12px',border:'1px solid '+(primary?'var(--accent)':'var(--rule)'),
-      background: primary?'var(--accent)':'transparent',
-      color: primary?'#1a0a02':'var(--fg)',
-      fontWeight: primary?600:500,
-      borderRadius:4,textDecoration:'none',
-    }}>{children}</a>
+    <a
+      href={href}
+      target={href.startsWith('#') ? undefined : '_blank'}
+      rel="noreferrer"
+      className="mono"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        fontSize:12, padding:'7px 12px',
+        border:'1px solid '+(primary?'var(--accent)':'var(--rule)'),
+        background: primary
+          ? (hovered ? '#ff8c3a' : 'var(--accent)')
+          : (hovered ? 'var(--surf2)' : 'transparent'),
+        color: primary?'#1a0a02':'var(--fg)',
+        fontWeight: primary?600:500,
+        borderRadius:4, textDecoration:'none',
+        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
+        boxShadow: hovered ? '0 4px 12px rgba(243,119,38,.25)' : 'none',
+        transition:'transform .15s ease, background .15s ease, box-shadow .15s ease',
+        display:'inline-block',
+      }}
+    >{children}</a>
   );
 }
 
@@ -626,10 +659,17 @@ function App() {
     }
   }, [activeCell, runCell, runAll, restart, showToast]);
 
-  // ── keyboard shortcut: Shift+Enter runs active cell ──────────────────────────
+  // ── keyboard shortcuts ────────────────────────────────────────────────────────
   useEffect(() => {
     function onKey(e) {
       if (e.key === 'Enter' && e.shiftKey && activeCell) {
+        // Shift+Enter: run cell and advance to next
+        e.preventDefault();
+        runCell(activeCell);
+        const idx = CELL_IDS.indexOf(activeCell);
+        if (idx < CELL_IDS.length - 1) setActive(CELL_IDS[idx + 1]);
+      } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && activeCell) {
+        // Ctrl+Enter: run cell in place
         e.preventDefault();
         runCell(activeCell);
       }
